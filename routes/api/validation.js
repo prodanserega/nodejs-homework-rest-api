@@ -1,19 +1,20 @@
 const Joi = require("joi");
+Joi.objectId = require("joi-objectid")(Joi);
+const patternPhone = "\\(?(\\d{3})\\)?[- ]?(\\d{3})[- ]?(\\d{2})[- ]?(\\d{2})";
 
 const schemaContact = Joi.object({
-  name: Joi.string().alphanum().min(1).max(20).required(),
-  phone: Joi.number().integer().min(8).max(12).required(),
-  isVaccinated: Joi.boolean().optional(),
+  name: Joi.string().min(1).max(20).required(),
+  email: Joi.string().email().required(),
+  phone: Joi.string().pattern(new RegExp(patternPhone)).required(),
+  favorite: Joi.boolean().optional(),
 });
 
 const schemaStatusContact = Joi.object({
-  isVaccinated: Joi.boolean().required(),
+  favorite: Joi.boolean().required(),
 });
 
-const pattern = "\\w{8}-\\w{4}-\\w{4}-\\w{4}-\\w{12}";
-
 const schemaId = Joi.object({
-  id: Joi.string().pattern(new RegExp(pattern)).required(),
+  id: Joi.objectId().required(),
 });
 
 const validate = async (schema, obj, res, next) => {
