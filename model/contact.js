@@ -1,20 +1,29 @@
-const { Schema, model } = require("mongoose");
+const { Schema, model, SchemaTypes } = require("mongoose");
+const { ValidInfoContacts } = require("../config/constants");
+const mongoosePaginate = require("mongoose-paginate-v2");
+
 const contactSchema = new Schema(
   {
     name: {
       type: String,
+      minLength: ValidInfoContacts.MIN_LENGTH,
+      maxLength: ValidInfoContacts.MAX_LENGTH,
       required: [true, "Set name for contact"],
     },
     email: {
       type: String,
+      required: [true, "Set email for contact"],
       unique: true,
     },
     phone: {
       type: String,
+      required: [true, "Set phone for contact"],
+      unique: true,
     },
-    favorite: {
-      type: Boolean,
-      default: false,
+    favorite: { type: Boolean, default: false },
+    owner: {
+      type: SchemaTypes.ObjectId,
+      ref: "user",
     },
   },
   {
@@ -22,7 +31,7 @@ const contactSchema = new Schema(
     timestamps: true,
     toJSON: {
       virtuals: true,
-      trsnsform: function (doc, ret) {
+      transform: function (doc, ret) {
         delete ret._id;
         return ret;
       },
@@ -32,9 +41,11 @@ const contactSchema = new Schema(
 );
 
 contactSchema.path("name").validate(function (value) {
-  const re = /\b[A-Z][-'a-zA-Z]+,?\s[A-Z][-'a-zA-Z]{0,19}\b/;
+  const re = /[A-Z][a-z]+(\s|,)[A-Z][a-z]{1,19}/;
   return re.test(String(value));
 });
+
+contactSchema.plugin(mongoosePaginate);
 
 const Contact = model("contact", contactSchema);
 
