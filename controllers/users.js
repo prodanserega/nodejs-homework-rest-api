@@ -6,6 +6,12 @@ const UploadService = require("../services/file-upload");
 const { HttpCode } = require("../config/constants");
 require("dotenv").config();
 const mkdirp = require("mkdirp");
+const EmailService = require("../services/email/services");
+const {
+  CreateSenderSendGrid,
+  CreateSenderNodemailer,
+} = require("../services/email/sender");
+
 const SECRET_KEY = process.env.JWT_SECRET_KEY;
 
 const registration = async (req, res, next) => {
@@ -20,6 +26,15 @@ const registration = async (req, res, next) => {
   }
   try {
     const newUser = await Users.create({ name, email, password, gender });
+    const emailService = new EmailService(
+      process.env.NODE_ENV,
+      new CreateSenderSendGrid()
+    );
+    const statusEmail = await emailService.sendVerifyEmail(
+      newUser.email,
+      newUser.name,
+      newUser.verifyToken
+    );
     return res.status(HttpCode.CREATED).json({
       status: "success",
       code: HttpCode.CREATED,
@@ -29,6 +44,7 @@ const registration = async (req, res, next) => {
         email: newUser.email,
         gender: newUser.gender,
         avatar: newUser.avatar,
+        successEmail: statusEmail,
       },
     });
   } catch (e) {
@@ -103,10 +119,55 @@ const uploadAvatar = async (req, res, next) => {
   });
 };
 
+const verifyUser = async (req, res, next) => {
+  const user = await Users.findUserByVerifyToken(req.params.token);
+  if (user) {
+    await Users.updateTokenVerify(user._id, true, null);
+    return res.status(HttpCode.OK).json({
+      status: "success",
+      code: HttpCode.OK,
+      data: {
+        message: "Success",
+      },
+    });
+  }
+  return res.status(HttpCode.BAD_REQUEST).json({
+    status: "error",
+    code: HttpCode.BAD_REQUEST,
+    message: "Invalid token",
+  });
+};
+
+const repeatEmailForVerifyUser = async (req, res, next) => {
+  const { email } = req.body;
+  const user = await Users.findByEmail(email);
+  if (user) {
+    const { email, name, verifyToken } = user;
+    const emailService = new EmailService(
+      process.env.NODE_ENV,
+      new CreateSenderNodemailer()
+    );
+    const statusEmail = await emailService.sendVerifyEmail(
+      email,
+      name,
+      verifyToken
+    );
+  }
+  return res.status(HttpCode.OK).json({
+    status: "success",
+    code: HttpCode.OK,
+    data: {
+      message: "Success",
+    },
+  });
+};
+
 module.exports = {
   registration,
   login,
   logout,
   current,
   uploadAvatar,
+  verifyUser,
+  repeatEmailForVerifyUser,
 };
